@@ -2,7 +2,8 @@
 
 """Ark LSP
 
-A wrapper to expose ark's lsp server.
+A wrapper to expose and connect to the LSP server embeded in the Ark jupyter
+kernel.
 """
 
 import argparse
