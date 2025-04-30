@@ -5,14 +5,13 @@ Posit's [Ark](https://github.com/posit-dev/ark) for R currently doesn't support 
 ```bash
 > ./ark-lsp.py --help
 
-usage: ark-lsp.py [-h] [--version] [--timeout TIMEOUT] [--no-cleanup]
+usage: ark-lsp.py [-h] [--version] [--no-cleanup]
 
 A wrapper to expose ark's LSP server.
 
 options:
   -h, --help         show this help message and exit
   --version          Print the version.
-  --timeout TIMEOUT  Time to wait for the LSP server.
   --no-cleanup       Don't cleanup ark's runtime metadata.
 ```
 
