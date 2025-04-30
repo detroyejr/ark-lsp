@@ -9,27 +9,11 @@ kernel.
 import argparse
 import atexit
 import os
-import random
-import socket
 import subprocess
 import sys
 import tempfile
-import time
 
 import jupyter_client
-
-
-def get_open_ports(n=1):
-    """Get an open port from a range."""
-    result = set()
-    while len(result) < n:
-        port_is_closed = True
-        while port_is_closed:
-            port = random.sample(range(43000, 63000), 1)[0]
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-                port_is_closed = sock.connect_ex(("127.0.0.1", port)) == 0
-        result.add(port)
-    return result
 
 
 if __name__ == "__main__":
@@ -41,13 +25,6 @@ if __name__ == "__main__":
         "--version",
         action="store_true",
         help="Print the version.",
-    )
-
-    parser.add_argument(
-        "--timeout",
-        type=float,
-        default=1,
-        help="Time to wait for the LSP server.",
     )
 
     parser.add_argument(
@@ -110,25 +87,35 @@ if __name__ == "__main__":
     km.load_connection_file()
     km.start_channels()
 
-    (lsp_port,) = get_open_ports()
-
-    km.session.send(
+    msg = km.session.send(
         msg_or_type=km.session.msg("comm_open")
         | {
             "content": {
                 "comm_id": "ark-lsp-server",
                 "target_name": "positron.lsp",
-                "data": {"client_address": "127.0.0.1:{}".format(lsp_port)},
+                "data": {
+                    "ip_address": "127.0.0.1",
+                },
             }
         },
         stream=km.shell_channel.socket,
     )
 
-    # Give the LSP time to start.
-    time.sleep(args.timeout)
+    # NOTE: Newer versions of ark automatically allocate a port for the lsp and
+    # I'm not sure we can customize that. We're going to assume that everything
+    # went well and we've received a "server_started" message with a port that
+    # we can pass to netcat.
+    _, data = km.session.recv(km.iopub_channel.socket)
+    while not data or (data.get("content").get("data") is None):
+        _, data = km.session.recv(km.iopub_channel.socket)
+
+    lsp_info = data.get("content").get("data")
+    assert lsp_info.get("msg_type") == "server_started", (
+        "Message type is not 'server_started.'"
+    )
 
     subprocess.run(
-        ["nc", "127.0.0.1", str(lsp_port)],
+        ["nc", "127.0.0.1", str(lsp_info["content"]["port"])],
         stdout=sys.stdout,
         stdin=sys.stdin,
     )
